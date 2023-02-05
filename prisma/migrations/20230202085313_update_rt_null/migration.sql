@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "User" ALTER COLUMN "rt_hash" DROP NOT NULL,
+ALTER COLUMN "rt_hash" DROP DEFAULT;
