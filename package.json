@@ -21,7 +21,6 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@anchan828/nest-sendgrid": "^0.6.29",
     "@nestjs-modules/mailer": "^1.8.1",
     "@nestjs/common": "^9.0.0",
     "@nestjs/config": "^2.2.0",
@@ -32,18 +31,17 @@
     "@nestjs/serve-static": "^3.0.0",
     "@prisma/client": "^4.9.0",
     "app-root-path": "^3.1.0",
-    "bcrypt": "^5.1.0",
+    "argon2": "^0.30.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "cookie-parser": "^1.4.6",
-    "dayjs": "^1.11.7",
     "nodemailer": "^6.9.1",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0",
-    "uuid": "^9.0.0"
+    "tslib": "^2.5.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",

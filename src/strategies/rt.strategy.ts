@@ -4,18 +4,18 @@ import { PassportStrategy } from '@nestjs/passport'
 import { User } from '@prisma/client'
 import { Request } from 'express'
 import { ExtractJwt, Strategy } from 'passport-jwt'
-import { UsersService } from 'src/core/user/users.service'
+import { UserService } from 'src/core/user/user.service'
 
 @Injectable()
 export class RtStrategy extends PassportStrategy(Strategy, 'rt-jwt') {
 	constructor(
 		private readonly configService: ConfigService,
-		private readonly userService: UsersService
+		private readonly userService: UserService
 	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
 				(request: Request) => {
-					let data = request?.cookies['refreshToken']
+					const data = request?.cookies['refreshToken']
 					return data ? data : null
 				}
 			]),
@@ -23,7 +23,8 @@ export class RtStrategy extends PassportStrategy(Strategy, 'rt-jwt') {
 			secretOrKey: configService.get('RT_SECRET')
 		})
 	}
+
 	validate({ id }: Pick<User, 'id'>) {
-		return this.userService.findFullOneById(id)
+		return this.userService.findById(id)
 	}
 }

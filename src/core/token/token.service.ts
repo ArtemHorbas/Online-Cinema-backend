@@ -1,16 +1,15 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
-import { UsersService } from '../user/users.service'
 
 @Injectable()
 export class TokenService {
 	constructor(
 		private readonly jwtService: JwtService,
 		private readonly configService: ConfigService
-	) { }
+	) {}
 
-	generateJwtTokens(userId: string) {
+	generateJwtTokens(userId: string): { accessToken: string; refreshToken: string } {
 		const payload = {
 			id: userId
 		}

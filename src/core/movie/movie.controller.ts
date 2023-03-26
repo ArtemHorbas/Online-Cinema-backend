@@ -10,9 +10,10 @@ import {
 	Post,
 	Query
 } from '@nestjs/common'
-import { Movie } from '@prisma/client'
-import { Auth } from 'src/decorators/auth.decorator'
+import { Movie, Role } from '@prisma/client'
+import { RolesCheck } from 'src/decorators/roles.decorator'
 import { CreateMovieDto } from './dto/create-movie.dto'
+import { GetByGenresDto } from './dto/get-by-genres.dto'
 import { UpdateMovieDto } from './dto/update-movie.dto'
 import { MovieService } from './movie.service'
 
@@ -22,32 +23,51 @@ export class MovieController {
 
 	@HttpCode(HttpStatus.CREATED)
 	@Post()
-	@Auth()
-	create(@Body() dto: CreateMovieDto): Promise<Movie> {
+	@RolesCheck(Role.ADMIN, Role.OWNER)
+	create(@Body() dto: CreateMovieDto): Promise<{ res: 'Created' }> {
 		return this.movieService.create(dto)
 	}
 
 	@Get()
-	findAll(@Query('searchTerm') searchTerm?: string): Promise<Movie[]> {
-		return this.movieService.findAll(searchTerm)
+	findAll(
+		@Query('searchTerm') searchTerm?: string,
+		@Query('sort') sort?: string,
+		@Query('take') take?: string
+	): Promise<Movie[]> {
+		return this.movieService.findAll(searchTerm, sort, +take)
 	}
 
-	@Get(':id')
-	findOne(@Param('id') id: string): Promise<Movie> {
-		return this.movieService.findOne(id)
+	@HttpCode(HttpStatus.OK)
+	@Post('/by-genres')
+	findByGenres(@Body() dto: GetByGenresDto): Promise<Movie[]> {
+		return this.movieService.findByGenres(dto)
+	}
+
+	@Get('by-actor/:slug')
+	findByActor(@Param('slug') slug: string): Promise<Movie[]> {
+		return this.movieService.findByActor(slug)
+	}
+
+	@Get('by-id/:id')
+	findById(@Param('id') id: string): Promise<Movie> {
+		return this.movieService.findById(id)
+	}
+
+	@Get('by-slug/:slug')
+	findBySlug(@Param('slug') slug: string): Promise<Movie> {
+		return this.movieService.findBySlug(slug)
 	}
 
 	@HttpCode(HttpStatus.OK)
 	@Patch(':id')
-	@Auth()
-	update(@Param('id') id: string, @Body() dto: UpdateMovieDto): Promise<Movie> {
+	update(@Param('id') id: string, @Body() dto: UpdateMovieDto): Promise<{ res: 'Updated' }> {
 		return this.movieService.update(id, dto)
 	}
 
 	@HttpCode(HttpStatus.OK)
 	@Delete(':id')
-	@Auth()
-	remove(@Param('id') id: string): Promise<Movie> {
+	@RolesCheck(Role.ADMIN, Role.OWNER)
+	remove(@Param('id') id: string): Promise<{ res: 'Deleted' }> {
 		return this.movieService.remove(id)
 	}
 }

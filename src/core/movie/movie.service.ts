@@ -1,83 +1,261 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
-import { Movie } from '@prisma/client'
+import {
+	BadRequestException,
+	forwardRef,
+	Inject,
+	Injectable,
+	NotFoundException
+} from '@nestjs/common'
+import { Movie, Prisma } from '@prisma/client'
 import { AppError } from 'src/utils/enums/errors'
 import { PrismaService } from '../database/prisma.service'
 import { ViewsService } from '../views/views.service'
 import { CreateMovieDto } from './dto/create-movie.dto'
+import { GetByGenresDto } from './dto/get-by-genres.dto'
 import { UpdateMovieDto } from './dto/update-movie.dto'
 
 @Injectable()
 export class MovieService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly viewsService: ViewsService
-  ) { }
+	constructor(
+		private readonly prisma: PrismaService,
+		@Inject(forwardRef(() => ViewsService))
+		private readonly viewsService: ViewsService
+	) {}
 
-  async create(dto: CreateMovieDto): Promise<Movie> {
-    const movie = await this.prisma.movie.create({
-      data: {
-        name: dto.name,
-        rating: dto.rating,
-        fees: dto.fees,
-        poster: dto.poster
-      },
-      include: {
-        reviews: true,
-        views: true
-      }
-    })
+	async create(dto: CreateMovieDto): Promise<{ res: 'Created' }> {
+		const movie = await this.prisma.movie.create({
+			data: {
+				name: dto.name,
+				slug: dto.slug,
+				fees: dto.fees,
+				poster: dto.poster,
+				bigPoster: dto.bigPoster,
+				video: dto.video,
+				params: {
+					create: {
+						year: dto.params.year,
+						duration: dto.params.duration,
+						country: dto.params.country
+					}
+				},
+				genres: { connect: dto.genres.map(genre => ({ slug: genre })) },
+				actors: { connect: dto.actors.map(actor => ({ slug: actor })) }
+			}
+		})
 
-    await this.viewsService.updateViews(movie.id)
+		await this.viewsService.updateViews(movie.id)
 
-    return await this.findMovie(movie.id)
-  }
+		return {
+			res: 'Created'
+		}
+	}
 
-  async findMovie(id: string): Promise<Movie> {
-    return await this.prisma.movie.findUnique({
-      where: { id },
-      include: {
-        reviews: true,
-        views: true
-      }
-    })
-  }
+	async findAll(searchTerm?: string, sort?: string, count?: number): Promise<Movie[]> {
+		let orderBy: Prisma.MovieOrderByWithRelationAndSearchRelevanceInput
+		let take: number
 
-  async findAll(searchTerm?: string): Promise<Movie[]> {
-    return await this.prisma.movie.findMany({
-      where: {
-        name: {
-          contains: searchTerm
-        }
-      },
-      include: {
-        reviews: true,
-        views: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
-  }
+		switch (sort) {
+			case 'rating':
+				orderBy = {
+					avgRating: 'desc'
+				}
+				break
 
-  async findOne(id: string): Promise<Movie> {
-    const movie = await this.findMovie(id)
-    if (!movie) throw new NotFoundException(AppError.MOVIE_NOT_FOUND)
+			case 'views':
+				orderBy = {
+					sumViews: 'desc'
+				}
+				break
 
-    await this.viewsService.updateViews(id)
+			case 'fees':
+				orderBy = {
+					fees: 'desc'
+				}
+				break
 
-    return await this.findMovie(id)
-  }
+			default:
+				orderBy = {
+					createdAt: 'desc'
+				}
+				break
+		}
 
-  async update(id: string, dto: UpdateMovieDto): Promise<Movie> {
-    return await this.prisma.movie.update({
-      where: { id },
-      data: dto
-    })
-  }
+		switch (count) {
+			case count:
+				take = count
+				break
 
-  async remove(id: string): Promise<Movie> {
-    return await this.prisma.movie.delete({
-      where: { id }
-    })
-  }
+			default:
+				take = undefined
+				break
+		}
+
+		return await this.prisma.movie.findMany({
+			where: {
+				name: {
+					contains: searchTerm,
+					mode: 'insensitive'
+				}
+			},
+			include: {
+				params: true,
+				reviews: true,
+				views: true,
+				genres: true,
+				actors: true
+			},
+			orderBy,
+			take
+		})
+	}
+
+	async findByGenres(dto: GetByGenresDto): Promise<Movie[]> {
+		return await this.prisma.movie.findMany({
+			where: {
+				genres: {
+					some: {
+						slug: {
+							in: dto.genres
+						}
+					}
+				}
+			}
+		})
+	}
+
+	async findByActor(slug: string): Promise<Movie[]> {
+		return await this.prisma.movie.findMany({
+			where: {
+				actors: {
+					some: {
+						slug
+					}
+				}
+			}
+		})
+	}
+
+	async findById(id: string): Promise<Movie> {
+		const movie = await this.prisma.movie.findUnique({
+			where: {
+				id
+			},
+			include: {
+				params: true,
+				genres: true,
+				actors: true
+			}
+		})
+		if (!movie) throw new NotFoundException(AppError.INCORRECT_REQUEST)
+
+		return movie
+	}
+
+	async findBySlug(slug: string): Promise<Movie> {
+		const movie = await this.prisma.movie.findUnique({
+			where: {
+				slug
+			},
+			include: {
+				params: true,
+				genres: true,
+				actors: true,
+				reviews: {
+					orderBy: {
+						createdAt: 'desc'
+					},
+					select: {
+						id: true,
+						description: true,
+						createdAt: true,
+						author: {
+							select: {
+								id: true,
+								name: true,
+								avatar: true
+							}
+						}
+					}
+				}
+			}
+		})
+		if (!movie) throw new NotFoundException(AppError.INCORRECT_REQUEST)
+
+		return movie
+	}
+
+	async findTotalMovies(): Promise<number> {
+		return await this.prisma.movie.count()
+	}
+
+	async findtTotalAvarage(): Promise<number> {
+		const res = await this.prisma.movie.aggregate({
+			_avg: {
+				avgRating: true
+			}
+		})
+
+		return res._avg.avgRating
+	}
+
+	async findTotalFees(): Promise<number> {
+		const res = await this.prisma.movie.aggregate({
+			_sum: {
+				fees: true
+			}
+		})
+
+		return res._sum.fees
+	}
+
+	async update(id: string, dto: UpdateMovieDto): Promise<{ res: 'Updated' }> {
+		const res = await this.prisma.movie.update({
+			where: { id },
+			data: {
+				...dto,
+				params: {
+					update: {
+						year: dto.params.year,
+						duration: dto.params.duration,
+						country: dto.params.country
+					}
+				},
+				genres: { set: dto.genres.map(genre => ({ slug: genre })) },
+				actors: { set: dto.actors.map(actor => ({ slug: actor })) }
+			}
+		})
+		if (!res) throw new BadRequestException(AppError.INCORRECT_REQUEST)
+
+		return {
+			res: 'Updated'
+		}
+	}
+
+	async updateRating(id: string, rating: number) {
+		await this.prisma.movie.update({
+			where: { id },
+			data: {
+				avgRating: rating
+			}
+		})
+	}
+
+	async incrementViews(id: string) {
+		await this.prisma.movie.update({
+			where: { id },
+			data: {
+				sumViews: { increment: 1 }
+			}
+		})
+	}
+
+	async remove(id: string): Promise<{ res: 'Deleted' }> {
+		const res = await this.prisma.movie.delete({
+			where: { id }
+		})
+		if (!res) throw new NotFoundException('Movie not exists')
+
+		return {
+			res: 'Deleted'
+		}
+	}
 }

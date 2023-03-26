@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Movie" ALTER COLUMN "poster" DROP DEFAULT,
+ALTER COLUMN "bigPoster" DROP DEFAULT;

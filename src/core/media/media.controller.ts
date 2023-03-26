@@ -13,7 +13,7 @@ import { IMediaResponse } from './res/media.response'
 
 @Controller('media')
 export class MediaController {
-	constructor(private readonly mediaService: MediaService) { }
+	constructor(private readonly mediaService: MediaService) {}
 
 	@HttpCode(HttpStatus.OK)
 	@Post()

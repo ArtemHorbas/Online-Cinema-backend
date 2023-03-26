@@ -26,9 +26,9 @@ export class ReviewController {
 		return this.reviewService.create(authorId, dto)
 	}
 
-	@Get('movie/:movieName')
-	findForMovie(@Param('movieName') movieName: string) {
-		return this.reviewService.findForMovie(movieName)
+	@Get('by-movie/:movieId')
+	findByMovie(@Param('movieId') movieId: string) {
+		return this.reviewService.findByMovie(movieId)
 	}
 
 	@HttpCode(HttpStatus.OK)
