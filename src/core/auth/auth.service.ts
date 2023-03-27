@@ -26,6 +26,10 @@ export class AuthService {
 		dto.password = await hash(dto.password)
 
 		const user = await this.userService.create(dto)
+		await this.mailService.sendActivationMail(
+			user.email,
+			`${this.configService.get('API_URL')}/user/activate/${user.id}`
+		)
 
 		const { accessToken, refreshToken } = this.tokenService.generateJwtTokens(user.id)
 		const rt_hash = await hash(refreshToken)
